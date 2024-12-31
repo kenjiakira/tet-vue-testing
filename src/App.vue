@@ -1,15 +1,45 @@
 <script setup lang="ts">
-import GreetingCard from './components/GreetingCard.vue'
-import AudioPlayer from './components/AudioPlayer.vue'
-import FireworksEffect from './components/FireworksEffect.vue'
-import LuckyMoney from './components/LuckyMoney.vue'
-import PeachBlossoms from './components/PeachBlossoms.vue'
-import SocialShare from './components/SocialShare.vue'
-import { ref, onMounted } from 'vue'
-const isMobile = ref(false)
+import { ref, onMounted, defineAsyncComponent } from 'vue'
 
+const isMobile = ref(false)
+const isLowEndDevice = ref(false)
+const isVeryLowEndDevice = ref(false)
+
+const FireworksEffect = defineAsyncComponent(() => import('./components/FireworksEffect.vue'))
+const PeachBlossoms = defineAsyncComponent(() => import('./components/PeachBlossoms.vue'))
+const LuckyMoney = defineAsyncComponent(() => import('./components/LuckyMoney.vue'))
+const GreetingCard = defineAsyncComponent(() => import('./components/GreetingCard.vue'))
+const AudioPlayer = defineAsyncComponent(() => import('./components/AudioPlayer.vue'))
+const SocialShare = defineAsyncComponent(() => import('./components/SocialShare.vue'))
+
+const isLoading = ref(true)
 onMounted(() => {
   isMobile.value = window.innerWidth <= 768
+  
+  const cores = navigator.hardwareConcurrency || 4
+  const memory = (navigator as any).deviceMemory || 4
+  const fps = 60 
+
+  console.log('Device Info:', {
+    cores,
+    memory,
+    fps,
+    width: window.innerWidth
+  })
+
+  isLowEndDevice.value = cores <= 2 || memory < 2
+  isVeryLowEndDevice.value = cores <= 1 || memory < 1
+
+  console.log('Device Status:', {
+    isMobile: isMobile.value,
+    isLowEnd: isLowEndDevice.value,
+    isVeryLowEnd: isVeryLowEndDevice.value
+  })
+
+  const delay = isVeryLowEndDevice.value ? 3000 : (isLowEndDevice.value ? 2000 : 1000)
+  setTimeout(() => {
+    isLoading.value = false
+  }, delay)
 })
 </script>
 
@@ -18,16 +48,19 @@ onMounted(() => {
     <Suspense>
       <template #default>
         <div>
-          <FireworksEffect v-if="!isMobile" :launchSpeed="2" :sparkDensity="1.5" />
-          <PeachBlossoms />
-          <LuckyMoney />
-          <greeting-card />
-          <AudioPlayer />
-          <SocialShare />
+          <GreetingCard />
+          <template v-if="!isLoading">
+            <FireworksEffect v-if="!isMobile" :launchSpeed="2" :sparkDensity="1.5" />
+          
+            <PeachBlossoms :reduced="isLowEndDevice" />
+            <LuckyMoney :reduced="isLowEndDevice" />
+            <AudioPlayer />
+            <SocialShare />
+          </template>
         </div>
       </template>
       <template #fallback>
-        <div>Loading...</div>
+        <div class="loading">Đang tải...</div>
       </template>
     </Suspense>
   </main>

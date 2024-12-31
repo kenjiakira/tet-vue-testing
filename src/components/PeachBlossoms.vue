@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, defineProps } from 'vue';
 
 interface BlossomStyle {
   left: string;
@@ -33,22 +33,50 @@ const createBlossom = () => {
   blossoms.value.push({ style });
 };
 
+const props = defineProps<{
+  reduced?: boolean
+}>()
+
 onMounted(() => {
   const isMobile = window.innerWidth <= 768;
-  const initialCount = isMobile ? 5 : 15;
-  const maxCount = isMobile ? 10 : 25;
-  const interval = isMobile ? 3000 : 2000;
+  const initialCount = props.reduced ? 2 : (isMobile ? 4 : 15);
+  const maxCount = props.reduced ? 3 : (isMobile ? 8 : 25);
+  const interval = props.reduced ? 6000 : (isMobile ? 4000 : 2000);
+  const minDuration = props.reduced ? 6 : 4;
+
+  const createOptimizedBlossom = () => {
+    if (document.hidden || !document.hasFocus()) return;
+    const style = {
+      left: `${Math.random() * 160 - 30}vw`, 
+      top: '-10vh', 
+      animationDuration: `${Math.random() * 2 + minDuration}s`,
+      animationDelay: `${Math.random() * 2}s`,
+      fontSize: `${Math.random() * 0.3 + 0.8}rem`
+    };
+    blossoms.value.push({ style });
+  };
+
+  const createWithIdle = () => {
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(() => createOptimizedBlossom());
+    } else {
+      requestAnimationFrame(() => createOptimizedBlossom());
+    }
+  };
 
   for (let i = 0; i < initialCount; i++) {
     createBlossom();
   }
 
-  setInterval(() => {
+  let timer = setInterval(() => {
+    if (document.hidden) return;
     if (blossoms.value.length > maxCount) {
       blossoms.value.shift();
     }
-    createBlossom();
+    createWithIdle();
   }, interval);
+
+  onUnmounted(() => clearInterval(timer));
 });
 </script>
 
@@ -70,6 +98,7 @@ onMounted(() => {
   animation: falling linear infinite;
   filter: drop-shadow(0 0 3px rgba(255, 192, 203, 0.5));
   will-change: transform;
+  contain: layout style paint;
 }
 
 @keyframes falling {
@@ -87,6 +116,8 @@ onMounted(() => {
 @media (max-width: 768px) {
   .blossom {
     filter: drop-shadow(0 0 2px rgba(255, 192, 203, 0.3));
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 }
 </style>

@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
 const luckyMessages = [
   "Phát tài phát lộc! 💰",
@@ -49,11 +49,12 @@ const currentMessage = ref('');
 
 const createEnvelope = () => {
   const randomDirection = Math.random() > 0.5 ? 1 : -1;
+  const animDuration = window.innerWidth <= 768 ? 5 : 3; 
   const style: EnvelopeStyle = {
     left: `${Math.random() * 160 - 30}vw`,
     top: '-50px',
-    animationDuration: `${Math.random() * 4 + 3}s`,
-    animationDelay: `${Math.random() * 2}s`,
+    animationDuration: `${Math.random() * 2 + animDuration}s`,
+    animationDelay: `${Math.random() * 3}s`,
     '--direction': randomDirection 
   };
   const message = luckyMessages[Math.floor(Math.random() * luckyMessages.length)];
@@ -75,13 +76,97 @@ const openEnvelope = (index: number) => {
   }
 };
 
+const props = defineProps<{
+  reduced?: boolean
+}>()
+
+// Thêm biến để theo dõi hiệu năng
+let performanceMode = ref('high'); // high, medium, low
+let fpsHistory: number[] = [];
+const FPS_SAMPLE_SIZE = 5;
+
 onMounted(() => {
   const isMobile = window.innerWidth <= 768;
-  const initialEnvelopes = isMobile ? 5 : 10;
+  const isLowEnd = props.reduced;
+  let lastFrameTime = performance.now();
+  let frameCount = 0;
 
-  for (let i = 0; i < initialEnvelopes; i++) {
+  // Khởi tạo với số lượng ít hơn
+  const initialCount = isMobile ? 2 : (isLowEnd ? 3 : 8);
+  for(let i = 0; i < initialCount; i++) {
     createEnvelope();
   }
+
+  const createOptimizedEnvelope = () => {
+    if (document.hidden || !document.hasFocus()) return;
+    
+    frameCount++;
+    const currentTime = performance.now();
+    
+    if (currentTime - lastFrameTime > 1000) {
+      const currentFps = frameCount / ((currentTime - lastFrameTime) / 1000);
+      
+      fpsHistory.push(currentFps);
+      if (fpsHistory.length > FPS_SAMPLE_SIZE) {
+        fpsHistory.shift();
+      }
+
+      const avgFps = fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
+      console.log('Average FPS:', avgFps);
+
+      if (avgFps < 20) {
+        performanceMode.value = 'low';
+      
+        if (envelopes.value.length > 2) {
+          envelopes.value = envelopes.value.slice(0, 2);
+        }
+      } else if (avgFps < 30) {
+        performanceMode.value = 'medium';
+        if (envelopes.value.length > 4) {
+          envelopes.value = envelopes.value.slice(0, 4);
+        }
+      } else {
+        performanceMode.value = 'high';
+      }
+
+      frameCount = 0;
+      lastFrameTime = currentTime;
+    }
+
+    const maxEnvelopes = {
+      low: 2,
+      medium: 4,
+      high: isMobile ? 6 : 12
+    }[performanceMode.value];
+
+    if (envelopes.value.length < maxEnvelopes) {
+      createEnvelope();
+    }
+  };
+
+  const interval = isMobile ? 4000 : (isLowEnd ? 3000 : 2000);
+  let rafId: number;
+
+  const queueNextEnvelope = () => {
+    if (performanceMode.value === 'low') {
+     
+      setTimeout(() => {
+        createOptimizedEnvelope();
+        queueNextEnvelope();
+      }, 2000);
+    } else {
+      rafId = requestAnimationFrame(() => {
+        createOptimizedEnvelope();
+        queueNextEnvelope();
+      });
+    }
+  };
+
+  queueNextEnvelope();
+  
+  onUnmounted(() => {
+    if (rafId) cancelAnimationFrame(rafId);
+  });
 });
 </script>
 
@@ -109,7 +194,7 @@ onMounted(() => {
   transform-style: preserve-3d;
   backface-visibility: hidden;
   cursor: pointer;
-  transition: transform 0.3s;
+  transition: all 0.5s ease;
   pointer-events: auto;
 }
 
@@ -190,7 +275,12 @@ onMounted(() => {
   .envelope {
     font-size: min(1.5rem, 6vw);
     padding: 3px;
-    animation-duration: 4s !important;
+    animation-duration: 5s !important;
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0.8; 
   }
 
   .lucky-message {

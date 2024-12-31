@@ -14,12 +14,13 @@
             </div>
             <qrcode-vue
               :value="websiteUrl"
-              :size="200"
+              :size="180"
               level="H"
               render-as="svg"
               :background="'#ffffff'"
               :foreground="'#e74c3c'"
               :margin="2"
+              class="qr-code"
             />
             <p class="qr-text">Quét để xem lời chúc Tết</p>
           </div>
@@ -54,17 +55,16 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import QrcodeVue from 'vue-qrcode';
 
 const showQR = ref(false);
-const isCollapsed = ref(true); // Mặc định đóng trên mobile
+const isCollapsed = ref(true); 
 
 const toggleMenu = () => {
   isCollapsed.value = !isCollapsed.value;
-  // Đóng QR modal khi đóng menu
+
   if (isCollapsed.value) {
     showQR.value = false;
   }
 };
 
-// Close menu when clicking outside
 const handleClickOutside = (event: MouseEvent) => {
   const shareEl = document.querySelector('.social-share');
   if (shareEl && !shareEl.contains(event.target as Node)) {
@@ -75,7 +75,7 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
-  // Tự động đóng menu trên mobile
+  
   const isMobile = window.innerWidth <= 768;
   isCollapsed.value = isMobile;
 });
@@ -179,18 +179,25 @@ const copyLink = async () => {
 
 .qr-modal {
   position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   background: rgba(0, 0, 0, 0.8);
   z-index: 9999;
-  padding: 16px;
 }
 
 .qr-container {
-  position: relative;
+  position: fixed; 
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: white;
-  width: min(320px, calc(100vw - 32px));
+  width: 320px;
+  max-width: calc(100vw - 32px);
   padding: 20px;
   border-radius: 20px;
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
@@ -229,6 +236,13 @@ const copyLink = async () => {
 .share-btn.qr {
   background: linear-gradient(45deg, #ffd700, #e74c3c);
   color: white;
+}
+
+.qr-code {
+  display: block;
+  width: 180px !important;
+  height: 180px !important;
+  margin: 0 auto;
 }
 
 @keyframes scaleIn {
@@ -272,8 +286,8 @@ const copyLink = async () => {
   }
 
   .qr-container {
+    width: min(320px, calc(100vw - 32px));
     padding: 15px;
-    margin: 20px;
   }
 
   .toggle-btn {
@@ -302,24 +316,19 @@ const copyLink = async () => {
   }
 
   .qr-modal {
-    display: grid;
-    place-items: center;
-    padding: 16px;
+    padding: 0;
   }
 
-  .qr-container {
-    width: min(320px, calc(100vw - 32px));
-    padding: 16px;
-    margin: 0;
-    position: relative;
-    top: auto;
-    left: auto;
-    transform: none;
+  .qr-code {
+    width: 160px !important;
+    height: 160px !important;
   }
 
   qrcode-vue {
-    max-width: 100%;
+    width: 100% !important;
     height: auto !important;
+    max-width: 200px !important;
+    margin: 0 auto;
   }
 
   .qr-header h3 {

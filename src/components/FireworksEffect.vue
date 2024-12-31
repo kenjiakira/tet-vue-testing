@@ -19,19 +19,23 @@ onMounted(() => {
   if (!fireworksContainer.value) return;
 
   const isMobile = window.innerWidth <= 768;
+  const isLowEnd = navigator.hardwareConcurrency <= 4;
+
+  // Không khởi tạo fireworks trên thiết bị yếu
+  if (isLowEnd || isMobile) return;
 
   fireworks = new Fireworks(fireworksContainer.value, {
-    speed: isMobile ? 2 : 4,
+    speed: isMobile ? 1 : 4,
     acceleration: 1.05,
     friction: 0.95,
     gravity: 1,
-    particles: isMobile ? 50 : 100,
-    trace: isMobile ? 5 : 10,
-    explosion: isMobile ? 5 : 8,
+    particles: isLowEnd ? 30 : (isMobile ? 50 : 100),
+    trace: isLowEnd ? 3 : (isMobile ? 5 : 10),
+    explosion: isLowEnd ? 3 : (isMobile ? 5 : 8),
     mouse: {
-      click: !isMobile,
+      click: !isMobile && !isLowEnd,
       move: false,
-      max: 3
+      max: 2
     },
     boundaries: {
       x: 0,
@@ -45,10 +49,18 @@ onMounted(() => {
       min: 0,
       max: 100
     },
-    intensity: isMobile ? 15 : 25
+    intensity: isLowEnd ? 10 : (isMobile ? 15 : 25)
   });
 
   fireworks.start();
+
+  setInterval(() => {
+    if (document.hidden) {
+      fireworks.stop();
+    } else {
+      fireworks.start();
+    }
+  }, 30000);
 });
 
 onUnmounted(() => {
