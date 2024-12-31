@@ -23,7 +23,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const songs = [
-  { name: "1.1.2024", path: "../src/assets/music/music.mp3" },
+  { name: "1.1.2025", path: "../src/assets/music/music.mp3" },
   { name: "VẠN NIÊN TƯ", path: "../src/assets/music/music2.mp3" },
   { name: "TẾT ĐONG ĐẦY", path: "../src/assets/music/music3.mp3" }
 ];
@@ -33,6 +33,7 @@ const audio = new Audio(songs[0].path);
 const isPlaying = ref(false);
 const shouldMarquee = ref(false);
 const autoPlayTimeout = ref<number | null>(null);
+const hasInteracted = ref(false); 
 
 const isMobile = window.innerWidth <= 768;
 
@@ -45,14 +46,28 @@ const togglePlay = () => {
   isPlaying.value = !isPlaying.value;
 }
 
+const handleFirstInteraction = () => {
+  if (!hasInteracted.value) {
+    hasInteracted.value = true;
+    playAudio();
+   
+    document.removeEventListener('touchstart', handleFirstInteraction);
+    document.removeEventListener('click', handleFirstInteraction);
+  }
+};
+
 const playAudio = async () => {
   try {
-    await audio.play();
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((error) => {
+        console.log('Playback prevented:', error);
+        autoPlayTimeout.value = window.setTimeout(playAudio, 1000);
+      });
+    }
     isPlaying.value = true;
   } catch (err) {
-    console.log('Auto-play prevented. User interaction needed.');
-
-    autoPlayTimeout.value = window.setTimeout(playAudio, 1000);
+    console.log('Play error:', err);
   }
 }
 
@@ -76,15 +91,25 @@ const checkTextOverflow = () => {
 onMounted(() => {
   checkTextOverflow();
   
-  if (!isMobile) {
-    playAudio();
-  }
+  document.addEventListener('touchstart', handleFirstInteraction);
+  document.addEventListener('click', handleFirstInteraction);
+
+  setTimeout(() => {
+    if (!hasInteracted.value) {
+      playAudio();
+    }
+  }, 1000);
+  
+  audio.volume = 0.7;
 });
 
 onUnmounted(() => {
+  // Clean up all listeners
   if (autoPlayTimeout.value) {
     clearTimeout(autoPlayTimeout.value);
   }
+  document.removeEventListener('touchstart', handleFirstInteraction);
+  document.removeEventListener('click', handleFirstInteraction);
   audio.pause();
   audio.removeEventListener('ended', nextSong);
 });
@@ -274,6 +299,16 @@ audio.addEventListener('ended', () => {
 .audio-player.playing {
   border-color: #e74c3c;
   box-shadow: 0 0 15px rgba(231, 76, 60, 0.3);
+}
+
+.audio-player:not(.playing) .play-btn {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 </style>
 
